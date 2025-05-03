@@ -62,7 +62,7 @@ private:
     size_t count;
     HashFunc hash_func;
 
-    // Default hash: Horner's rule
+    // Horners rule
     static size_t default_string_hash(const string& s, size_t mod) {
         size_t h = 0;
         for (char c : s) {
