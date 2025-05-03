@@ -174,6 +174,24 @@ int main(int argc, char* argv[]) {
                 cout << "Bottom 80 Words:" << endl;
                 for (size_t i = 0; i < 80 && i < temp.size(); ++i)
                     cout << temp[i].first << ": " << temp[i].second << endl;
+                     // Rebuild freq_list from scratch
+    freq_list = ResizableArray<pair<string,int>>();
+    for (size_t i = 0; i < tokens.size(); ++i) {
+        bool found = false;
+        for (size_t j = 0; j < freq_list.size(); ++j) {
+                if (freq_list[j].first == tokens[i]) {
+                freq_list[j].second++;
+                found = true;
+                break;
+            }
+        }
+        if (!found) freq_list.push_back(make_pair(tokens[i],1));
+    }
+    sort_freq_asc(freq_list);
+    cout << "Bottom 80 Words:" << endl;
+    for (size_t i = 0; i < 80 && i < freq_list.size(); ++i)
+        cout << freq_list[i].first << ": " << freq_list[i].second << endl;
+     break;
                 break;
             }
             case 4: {
