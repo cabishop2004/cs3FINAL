@@ -91,6 +91,74 @@ ResizableArray<size_t> rabin_karp(const ResizableArray<string>& tokens, const st
     return positions;
 }
 
+size_t simple_mod_hash(const string& s, size_t hsize) {
+    size_t sum = 0;
+    for (char c : s) sum += static_cast<unsigned char>(c);
+    return sum % hsize;
+}
+
+
+void run_experiments(const ResizableArray<string>& tokens) {
+    const vector<double> load_factors = {0.5, 0.7, 0.8};
+    const vector<size_t> table_sizes = {5003, 10007, 20011};
+
+    cout << "\n=== Experiment 1: Linear Probing with Varying Load Factors ===\n";
+    for (double lf : load_factors) {
+        ProbingHash<string, int> probe(20011, lf); // fixed table size
+        auto start = high_resolution_clock::now();
+        for (size_t i = 0; i < tokens.size(); ++i) {
+            int v;
+            probe.find(tokens[i], v) ? probe.insert(tokens[i], v + 1) : probe.insert(tokens[i], 1);
+        }
+        auto end = high_resolution_clock::now();
+        cout << "Load factor: " << lf
+             << " → Time: " << duration_cast<nanoseconds>(end - start).count() << " ns\n";
+    }
+
+    cout << "\n=== Experiment 2: Chaining with Varying Table Sizes ===\n";
+    for (size_t sz : table_sizes) {
+        ChainingHash<string, int> chain(sz);
+        auto start = high_resolution_clock::now();
+        for (size_t i = 0; i < tokens.size(); ++i) {
+            int v;
+            chain.find(tokens[i], v) ? chain.insert(tokens[i], v + 1) : chain.insert(tokens[i], 1);
+        }
+        auto end = high_resolution_clock::now();
+        cout << "Table size: " << sz
+             << " → Time: " << duration_cast<nanoseconds>(end - start).count() << " ns\n";
+    }
+
+    cout << "\n=== Experiment 3: Comparing Hash Functions (Chaining) ===\n";
+    // Default Horner’s hash
+    {
+        ChainingHash<string, int> chain(20011);
+        auto start = high_resolution_clock::now();
+        for (size_t i = 0; i < tokens.size(); ++i) {
+            int v;
+            chain.find(tokens[i], v) ? chain.insert(tokens[i], v + 1) : chain.insert(tokens[i], 1);
+        }
+        auto end = high_resolution_clock::now();
+        cout << "Horner → Time: "
+             << duration_cast<nanoseconds>(end - start).count() << " ns\n";
+    }
+    // Simple mod hash
+    {
+        ChainingHash<string, int> chain(20011, simple_mod_hash);
+        auto start = high_resolution_clock::now();
+        for (size_t i = 0; i < tokens.size(); ++i) {
+            int v;
+            chain.find(tokens[i], v) ? chain.insert(tokens[i], v + 1) : chain.insert(tokens[i], 1);
+        }
+        auto end = high_resolution_clock::now();
+        cout << "Simple mod hash → Time: "
+             << duration_cast<nanoseconds>(end - start).count() << " ns\n";
+    }
+
+    cout << "\n=== Experiment 4: Collision Handling (Linear Probing) ===\n";
+    cout << "Handled using linear probing: if a collision occurs, search linearly until an empty slot is found.\n";
+    cout << "Method: (i + 1) % hsize. Based on open addressing.\n";
+}
+
 void menu() {
     cout << "=== Menu === \n"
          << "1. Display 80 most frequent words" << endl
