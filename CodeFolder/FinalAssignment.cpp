@@ -46,16 +46,16 @@ string clean_token(const string& token) {
     return temp;
 }
 
-size_t count_sentences(const ResizableArray<string>& tokens) {
-    size_t sentences = 0;
-    for (size_t i = 0; i < tokens.size(); ++i) {
-        const string& tok = tokens[i];
-        for (char c : tok) {
-            if (c == '.' || c == '!' || c == '?') sentences++;
-        }
-    }
-    return sentences;
-}
+// size_t count_sentences(const ResizableArray<string>& tokens) {
+//     size_t sentences = 0;
+//     for (size_t i = 0; i < tokens.size(); ++i) {
+//         const string& tok = tokens[i];
+//         for (char c : tok) {
+//             if (c == '.' || c == '!' || c == '?') sentences++;
+//         }
+//     }
+//     return sentences;
+// }
 
 // Simple selection sort descending by count
 void sort_freq_desc(ResizableArray<pair<string,int>>& arr) {
@@ -126,15 +126,22 @@ int main(int argc, char* argv[]) {
                 tokens = ResizableArray<string>();
                 freq_list = ResizableArray<pair<string,int>>();
                 string word;
+                size_t sentence_count = 0;
                 auto start = high_resolution_clock::now();
                 while (infile >> word) {
+                    // Count sentence-ending punctuation
+                    for (char c : word) {
+                        if (c == '.' || c == '!' || c == '?') sentence_count++;
+                    }
+
                     string w = clean_token(word);
                     if (w.empty()) continue;
                     tokens.push_back(w);
                     int v;
-                    chain_table.find(w,v) ? chain_table.insert(w, v+1) : chain_table.insert(w,1);
-                    probe_table.find(w,v) ? probe_table.insert(w, v+1) : probe_table.insert(w,1);
+                    chain_table.find(w, v) ? chain_table.insert(w, v + 1) : chain_table.insert(w, 1);
+                    probe_table.find(w, v) ? probe_table.insert(w, v + 1) : probe_table.insert(w, 1);
                 }
+
                 auto end = high_resolution_clock::now();
                 outfile << "Load/Process Time: "
                         << duration_cast<nanoseconds>(end-start).count()
@@ -222,8 +229,7 @@ int main(int argc, char* argv[]) {
                 break;
             }
             case 4: {
-                size_t sentences = count_sentences(tokens);
-                cout << "Sentence count: "<<sentences<<endl;
+                cout << "Sentence count: " << sentence_count << endl;
                 break;
             }
             case 0:
