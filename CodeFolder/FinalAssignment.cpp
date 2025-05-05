@@ -93,11 +93,10 @@ ResizableArray<size_t> rabin_karp(const ResizableArray<string>& tokens, const st
 
 void menu() {
     cout << "=== Menu === \n"
-         << "1. Load and process text" << endl
-         << "2. Display 80 most frequent words" << endl
-         << "3. Display 80 least frequent words" << endl
-         << "4. Search up to 8 keys in 'Engineer’s Thumb'" << endl
-         << "5. Count sentences" << endl
+         << "1. Display 80 most frequent words" << endl
+         << "2. Display 80 least frequent words" << endl
+         << "3. Search up to 8 keys in 'Engineer’s Thumb'" << endl
+         << "4. Count sentences" << endl
          << "0. Exit" << endl
          << "Choice: ";
 }
@@ -145,7 +144,7 @@ int main(int argc, char* argv[]) {
         menu(); cin >> choice;
         switch (choice) {
             
-            case 2: {
+            case 1: {
                 // build freq_list from tokens
                 // first, get unique words and counts
                 // naive: for each token, update freq_list
@@ -166,7 +165,7 @@ int main(int argc, char* argv[]) {
                     cout << freq_list[i].first << ": " << freq_list[i].second << endl;
                 break;
             }
-            case 3: {
+            case 2: {
                 // lowest frequencies
                 // reuse freq_list or rebuild
                 ResizableArray<pair<string,int>> temp = freq_list;
@@ -194,7 +193,7 @@ int main(int argc, char* argv[]) {
      break;
                 break;
             }
-            case 4: {
+            case 3: {
                 infile.clear(); infile.seekg(0);
                 // naive skip to work IX
                 ResizableArray<string> work9;
@@ -222,7 +221,7 @@ int main(int argc, char* argv[]) {
                 }
                 break;
             }
-            case 5: {
+            case 4: {
                 size_t sentences = count_sentences(tokens);
                 cout << "Sentence count: "<<sentences<<endl;
                 break;
