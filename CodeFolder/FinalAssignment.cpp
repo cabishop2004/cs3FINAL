@@ -15,14 +15,64 @@ template<typename T>
 class ResizableArray {
 public:
     ResizableArray() : data(nullptr), cap(0), len(0) {}
+
+    // Copy constructor
+    ResizableArray(const ResizableArray& other) : data(nullptr), cap(other.cap), len(other.len) {
+        if (cap > 0) {
+            data = new T[cap];
+            for (size_t i = 0; i < len; ++i) {
+                data[i] = other.data[i];
+            }
+        }
+    }
+
+    // Move constructor
+    ResizableArray(ResizableArray&& other) noexcept : data(other.data), cap(other.cap), len(other.len) {
+        other.data = nullptr;
+        other.cap = 0;
+        other.len = 0;
+    }
+
+    // Copy assignment operator
+    ResizableArray& operator=(const ResizableArray& other) {
+        if (this != &other) {
+            delete[] data;
+            cap = other.cap;
+            len = other.len;
+            data = (cap > 0) ? new T[cap] : nullptr;
+            for (size_t i = 0; i < len; ++i) {
+                data[i] = other.data[i];
+            }
+        }
+        return *this;
+    }
+
+    // Move assignment operator
+    ResizableArray& operator=(ResizableArray&& other) noexcept {
+        if (this != &other) {
+            delete[] data;
+            data = other.data;
+            cap = other.cap;
+            len = other.len;
+            other.data = nullptr;
+            other.cap = 0;
+            other.len = 0;
+        }
+        return *this;
+    }
+
+    // Destructor
     ~ResizableArray() { delete[] data; }
+
     void push_back(const T& val) {
         if (len == cap) resize();
         data[len++] = val;
     }
+
     T& operator[](size_t idx) { assert(idx < len); return data[idx]; }
     const T& operator[](size_t idx) const { assert(idx < len); return data[idx]; }
     size_t size() const { return len; }
+
 private:
     void resize() {
         cap = (cap == 0 ? 10 : cap * 2);
@@ -31,6 +81,7 @@ private:
         delete[] data;
         data = newdata;
     }
+
     T* data;
     size_t cap;
     size_t len;
@@ -165,6 +216,7 @@ void menu() {
          << "2. Display 80 least frequent words" << endl
          << "3. Search up to 8 keys in 'Engineer’s Thumb'" << endl
          << "4. Count sentences" << endl
+         << "5. Run experiments" << endl // New menu option
          << "0. Exit" << endl
          << "Choice: ";
 }
@@ -174,7 +226,8 @@ int main(int argc, char* argv[]) {
         cerr << "Usage: " << argv[0] << " <input_file> <output_file>";
         return 1;
     }
-    ifstream infile(argv[1]); ofstream outfile(argv[2]);
+    ifstream infile(argv[1]); 
+    ofstream outfile(argv[2]);
     if (!infile || !outfile) {
         cerr << "Error opening files";
         return 1;
@@ -190,39 +243,35 @@ int main(int argc, char* argv[]) {
 
     int choice;
     infile.clear(); infile.seekg(0);
-                // reset
-                tokens = ResizableArray<string>();
-                freq_list = ResizableArray<pair<string,int>>();
-                string word;
-                size_t sentence_count = 0;
-                auto start = high_resolution_clock::now();
-                while (infile >> word) {
-                    // Count sentence-ending punctuation
-                    for (char c : word) {
-                        if (c == '.' || c == '!' || c == '?') sentence_count++;
-                    }
+    tokens = ResizableArray<string>();
+    freq_list = ResizableArray<pair<string,int>>();
+    string word;
+    size_t sentence_count = 0;
+    auto start = high_resolution_clock::now();
+    while (infile >> word) {
+        for (char c : word) {
+            if (c == '.' || c == '!' || c == '?') sentence_count++;
+        }
 
-                    string w = clean_token(word);
-                    if (w.empty()) continue;
-                    tokens.push_back(w);
-                    int v;
-                    chain_table.find(w, v) ? chain_table.insert(w, v + 1) : chain_table.insert(w, 1);
-                    probe_table.find(w, v) ? probe_table.insert(w, v + 1) : probe_table.insert(w, 1);
-                }
+        string w = clean_token(word);
+        if (w.empty()) continue;
+        tokens.push_back(w);
+        int v;
+        chain_table.find(w, v) ? chain_table.insert(w, v + 1) : chain_table.insert(w, 1);
+        probe_table.find(w, v) ? probe_table.insert(w, v + 1) : probe_table.insert(w, 1);
+    }
 
-                auto end = high_resolution_clock::now();
-                outfile << "Load/Process Time: "
-                        << duration_cast<nanoseconds>(end-start).count()
-                        << " ns";
-               
+    auto end = high_resolution_clock::now();
+    outfile << "Load/Process Time: "
+            << duration_cast<nanoseconds>(end-start).count()
+            << " ns";
+
     do {
-        menu(); cin >> choice;
+        menu(); 
+        cin >> choice;
         switch (choice) {
-            
             case 1: {
                 // build freq_list from tokens
-                // first, get unique words and counts
-                // naive: for each token, update freq_list
                 for (size_t i = 0; i < tokens.size(); ++i) {
                     bool found = false;
                     for (size_t j = 0; j < freq_list.size(); ++j) {
@@ -235,42 +284,24 @@ int main(int argc, char* argv[]) {
                     if (!found) freq_list.push_back(make_pair(tokens[i], 1));
                 }
                 sort_freq_desc(freq_list);
-                cout << "Top 80 Words:" << endl;
+                outfile << "Top 80 Words:" << endl;
                 for (size_t i = 0; i < 80 && i < freq_list.size(); ++i)
-                    cout << freq_list[i].first << ": " << freq_list[i].second << endl;
+                    outfile << freq_list[i].first << ": " << freq_list[i].second << endl;
+                cout << "Top 80 words written to output file.\n";
                 break;
             }
             case 2: {
                 // lowest frequencies
-                // reuse freq_list or rebuild
                 ResizableArray<pair<string,int>> temp = freq_list;
                 sort_freq_asc(temp);
-                cout << "Bottom 80 Words:" << endl;
+                outfile << "Bottom 80 Words:" << endl;
                 for (size_t i = 0; i < 80 && i < temp.size(); ++i)
-                    cout << temp[i].first << ": " << temp[i].second << endl;
-                     // Rebuild freq_list from scratch
-    freq_list = ResizableArray<pair<string,int>>();
-    for (size_t i = 0; i < tokens.size(); ++i) {
-        bool found = false;
-        for (size_t j = 0; j < freq_list.size(); ++j) {
-                if (freq_list[j].first == tokens[i]) {
-                freq_list[j].second++;
-                found = true;
-                break;
-            }
-        }
-        if (!found) freq_list.push_back(make_pair(tokens[i],1));
-    }
-    sort_freq_asc(freq_list);
-    cout << "Bottom 80 Words:" << endl;
-    for (size_t i = 0; i < 80 && i < freq_list.size(); ++i)
-        cout << freq_list[i].first << ": " << freq_list[i].second << endl;
-     break;
+                    outfile << temp[i].first << ": " << temp[i].second << endl;
+                cout << "Bottom 80 words written to output file.\n";
                 break;
             }
             case 3: {
                 infile.clear(); infile.seekg(0);
-                // naive skip to work IX
                 ResizableArray<string> work9;
                 size_t count = 0;
                 string word;
@@ -288,24 +319,39 @@ int main(int argc, char* argv[]) {
                     line.erase(0, pos + 3);
                 }
                 keys.push_back(clean_token(line));
+                outfile << "Key Search Results:" << endl;
                 for (size_t i = 0; i < keys.size(); ++i) {
                     auto positions = rabin_karp(work9, keys[i]);
-                    cout << "Key '"<<keys[i]<<"' at positions: ";
-                    for (size_t p = 0; p < positions.size(); ++p) cout << positions[p] << " ";
-                    cout << endl;
+                    outfile << "Key '" << keys[i] << "' at positions: ";
+                    for (size_t p = 0; p < positions.size(); ++p) outfile << positions[p] << " ";
+                    outfile << endl;
                 }
+                cout << "Key search results written to output file.\n";
                 break;
             }
             case 4: {
-                cout << "Sentence count: " << sentence_count << endl;
+                outfile << "Sentence count: " << sentence_count << endl;
+                cout << "Sentence count written to output file.\n";
                 break;
             }
-            case 0:
-                cout << "Exiting."<<endl;
+            case 5: { // Run experiments
+                outfile << "\n=== Running Experiments ===\n";
+                streambuf* cout_buf = cout.rdbuf(); // Save original cout buffer
+                cout.rdbuf(outfile.rdbuf());       // Redirect cout to outfile
+                run_experiments(tokens);           // Ensure experiments are executed immediately
+                cout.rdbuf(cout_buf);              // Restore original cout buffer
+                outfile.flush();                   // Flush output to ensure it is written immediately
+                cout << "Experiments completed. Results written to output file.\n";
                 break;
+            }
+            case 0: {
+                cout << "Exiting program." << endl;
+                break;
+            }
             default:
-                cout << "Invalid choice."<<endl;
+                cout << "Invalid choice." << endl;
         }
     } while (choice != 0);
-    return 0;
+
+    return 0; // Ensure a clean exit
 }
