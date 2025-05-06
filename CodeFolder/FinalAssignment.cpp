@@ -140,6 +140,8 @@ size_t simple_mod_hash(const string& s, size_t hsize) {
 
 
 void run_experiments(const ResizableArray<string>& tokens) {
+    const int NUM_RUNS = 10;
+
     ResizableArray<double> load_factors;
     load_factors.push_back(0.5);
     load_factors.push_back(0.7);
@@ -153,58 +155,84 @@ void run_experiments(const ResizableArray<string>& tokens) {
     cout << "\n=== Experiment 1: Linear Probing with Varying Load Factors ===\n";
     for (size_t i = 0; i < load_factors.size(); ++i) {
         double lf = load_factors[i];
-        ProbingHash<string, int> probe(20011, lf);
-        auto start = high_resolution_clock::now();
-        for (size_t j = 0; j < tokens.size(); ++j) {
-            int v;
-            probe.find(tokens[j], v) ? probe.insert(tokens[j], v + 1) : probe.insert(tokens[j], 1);
+        long long total_time = 0;
+
+        for (int run = 0; run < NUM_RUNS; ++run) {
+            ProbingHash<string, int> probe(20011, lf);
+            auto start = high_resolution_clock::now();
+            for (size_t j = 0; j < tokens.size(); ++j) {
+                int v;
+                probe.find(tokens[j], v) ? probe.insert(tokens[j], v + 1) : probe.insert(tokens[j], 1);
+            }
+            auto end = high_resolution_clock::now();
+            total_time += duration_cast<nanoseconds>(end - start).count();
         }
-        auto end = high_resolution_clock::now();
+
         cout << "Load factor: " << lf
-             << " → Time: " << duration_cast<nanoseconds>(end - start).count() << " ns\n";
+             << " → Average Time (" << NUM_RUNS << " runs): "
+             << (total_time / NUM_RUNS) << " ns\n";
     }
 
     cout << "\n=== Experiment 2: Chaining with Varying Table Sizes ===\n";
     for (size_t i = 0; i < table_sizes.size(); ++i) {
         size_t sz = table_sizes[i];
-        ChainingHash<string, int> chain(sz);
-        auto start = high_resolution_clock::now();
-        for (size_t j = 0; j < tokens.size(); ++j) {
-            int v;
-            chain.find(tokens[j], v) ? chain.insert(tokens[j], v + 1) : chain.insert(tokens[j], 1);
+        long long total_time = 0;
+
+        for (int run = 0; run < NUM_RUNS; ++run) {
+            ChainingHash<string, int> chain(sz);
+            auto start = high_resolution_clock::now();
+            for (size_t j = 0; j < tokens.size(); ++j) {
+                int v;
+                chain.find(tokens[j], v) ? chain.insert(tokens[j], v + 1) : chain.insert(tokens[j], 1);
+            }
+            auto end = high_resolution_clock::now();
+            total_time += duration_cast<nanoseconds>(end - start).count();
         }
-        auto end = high_resolution_clock::now();
+
         cout << "Table size: " << sz
-             << " → Time: " << duration_cast<nanoseconds>(end - start).count() << " ns\n";
+             << " → Average Time (" << NUM_RUNS << " runs): "
+             << (total_time / NUM_RUNS) << " ns\n";
     }
 
     cout << "\n=== Experiment 3: Comparing Hash Functions (Chaining) ===\n";
+
+    // Horner's Rule
     {
-        ChainingHash<string, int> chain(20011);
-        auto start = high_resolution_clock::now();
-        for (size_t i = 0; i < tokens.size(); ++i) {
-            int v;
-            chain.find(tokens[i], v) ? chain.insert(tokens[i], v + 1) : chain.insert(tokens[i], 1);
+        long long total_time = 0;
+        for (int run = 0; run < NUM_RUNS; ++run) {
+            ChainingHash<string, int> chain(20011);
+            auto start = high_resolution_clock::now();
+            for (size_t i = 0; i < tokens.size(); ++i) {
+                int v;
+                chain.find(tokens[i], v) ? chain.insert(tokens[i], v + 1) : chain.insert(tokens[i], 1);
+            }
+            auto end = high_resolution_clock::now();
+            total_time += duration_cast<nanoseconds>(end - start).count();
         }
-        auto end = high_resolution_clock::now();
-        cout << "Horner's → Time: "
-             << duration_cast<nanoseconds>(end - start).count() << " ns\n";
+        cout << "Horner's → Average Time (" << NUM_RUNS << " runs): "
+             << (total_time / NUM_RUNS) << " ns\n";
     }
+
+    // Simple Mod Hash
     {
-        ChainingHash<string, int> chain(20011, simple_mod_hash);
-        auto start = high_resolution_clock::now();
-        for (size_t i = 0; i < tokens.size(); ++i) {
-            int v;
-            chain.find(tokens[i], v) ? chain.insert(tokens[i], v + 1) : chain.insert(tokens[i], 1);
+        long long total_time = 0;
+        for (int run = 0; run < NUM_RUNS; ++run) {
+            ChainingHash<string, int> chain(20011, simple_mod_hash);
+            auto start = high_resolution_clock::now();
+            for (size_t i = 0; i < tokens.size(); ++i) {
+                int v;
+                chain.find(tokens[i], v) ? chain.insert(tokens[i], v + 1) : chain.insert(tokens[i], 1);
+            }
+            auto end = high_resolution_clock::now();
+            total_time += duration_cast<nanoseconds>(end - start).count();
         }
-        auto end = high_resolution_clock::now();
-        cout << "Simple mod hash → Time: "
-             << duration_cast<nanoseconds>(end - start).count() << " ns\n";
+        cout << "Simple mod hash → Average Time (" << NUM_RUNS << " runs): "
+             << (total_time / NUM_RUNS) << " ns\n";
     }
 
     cout << "\n=== Experiment 4: Collision Handling (Linear Probing) ===\n";
-    cout << "Handled using linear probing: if a collision occurs, search linearly until an empty slot is found.\n";
-    cout << "Method: (i + 1) % hsize. Based on open addressing.\n";
+    cout << "Collision resolution uses linear probing: if a collision occurs, probe the next slot using (i + 1) % hsize.\n";
+    cout << "This method is based on open addressing, as discussed in class.\n";
 }
 void menu() {
     cout << "=== Menu === \n"
