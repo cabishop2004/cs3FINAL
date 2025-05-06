@@ -97,16 +97,6 @@ string clean_token(const string& token) {
     return temp;
 }
 
-// size_t count_sentences(const ResizableArray<string>& tokens) {
-//     size_t sentences = 0;
-//     for (size_t i = 0; i < tokens.size(); ++i) {
-//         const string& tok = tokens[i];
-//         for (char c : tok) {
-//             if (c == '.' || c == '!' || c == '?') sentences++;
-//         }
-//     }
-//     return sentences;
-// }
 
 // Simple selection sort descending by count
 void sort_freq_desc(ResizableArray<pair<string,int>>& arr) {
@@ -150,16 +140,24 @@ size_t simple_mod_hash(const string& s, size_t hsize) {
 
 
 void run_experiments(const ResizableArray<string>& tokens) {
-    const vector<double> load_factors = {0.5, 0.7, 0.8};
-    const vector<size_t> table_sizes = {5003, 10007, 20011};
+    ResizableArray<double> load_factors;
+    load_factors.push_back(0.5);
+    load_factors.push_back(0.7);
+    load_factors.push_back(0.8);
+
+    ResizableArray<size_t> table_sizes;
+    table_sizes.push_back(5003);
+    table_sizes.push_back(10007);
+    table_sizes.push_back(20011);
 
     cout << "\n=== Experiment 1: Linear Probing with Varying Load Factors ===\n";
-    for (double lf : load_factors) {
-        ProbingHash<string, int> probe(20011, lf); // fixed table size
+    for (size_t i = 0; i < load_factors.size(); ++i) {
+        double lf = load_factors[i];
+        ProbingHash<string, int> probe(20011, lf);
         auto start = high_resolution_clock::now();
-        for (size_t i = 0; i < tokens.size(); ++i) {
+        for (size_t j = 0; j < tokens.size(); ++j) {
             int v;
-            probe.find(tokens[i], v) ? probe.insert(tokens[i], v + 1) : probe.insert(tokens[i], 1);
+            probe.find(tokens[j], v) ? probe.insert(tokens[j], v + 1) : probe.insert(tokens[j], 1);
         }
         auto end = high_resolution_clock::now();
         cout << "Load factor: " << lf
@@ -167,12 +165,13 @@ void run_experiments(const ResizableArray<string>& tokens) {
     }
 
     cout << "\n=== Experiment 2: Chaining with Varying Table Sizes ===\n";
-    for (size_t sz : table_sizes) {
+    for (size_t i = 0; i < table_sizes.size(); ++i) {
+        size_t sz = table_sizes[i];
         ChainingHash<string, int> chain(sz);
         auto start = high_resolution_clock::now();
-        for (size_t i = 0; i < tokens.size(); ++i) {
+        for (size_t j = 0; j < tokens.size(); ++j) {
             int v;
-            chain.find(tokens[i], v) ? chain.insert(tokens[i], v + 1) : chain.insert(tokens[i], 1);
+            chain.find(tokens[j], v) ? chain.insert(tokens[j], v + 1) : chain.insert(tokens[j], 1);
         }
         auto end = high_resolution_clock::now();
         cout << "Table size: " << sz
@@ -180,7 +179,6 @@ void run_experiments(const ResizableArray<string>& tokens) {
     }
 
     cout << "\n=== Experiment 3: Comparing Hash Functions (Chaining) ===\n";
-    // Default Horner’s hash
     {
         ChainingHash<string, int> chain(20011);
         auto start = high_resolution_clock::now();
@@ -189,10 +187,9 @@ void run_experiments(const ResizableArray<string>& tokens) {
             chain.find(tokens[i], v) ? chain.insert(tokens[i], v + 1) : chain.insert(tokens[i], 1);
         }
         auto end = high_resolution_clock::now();
-        cout << "Horner → Time: "
+        cout << "Horner's → Time: "
              << duration_cast<nanoseconds>(end - start).count() << " ns\n";
     }
-    // Simple mod hash
     {
         ChainingHash<string, int> chain(20011, simple_mod_hash);
         auto start = high_resolution_clock::now();
@@ -209,7 +206,6 @@ void run_experiments(const ResizableArray<string>& tokens) {
     cout << "Handled using linear probing: if a collision occurs, search linearly until an empty slot is found.\n";
     cout << "Method: (i + 1) % hsize. Based on open addressing.\n";
 }
-
 void menu() {
     cout << "=== Menu === \n"
          << "1. Display 80 most frequent words" << endl
