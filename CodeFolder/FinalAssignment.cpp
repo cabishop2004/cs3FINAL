@@ -1,4 +1,5 @@
 #include "ChainingHash.h"
+#include "FinalAssignment.h"
 #include "ProbingHash.h"
 #include <iostream>
 #include <fstream>
@@ -11,81 +12,7 @@
 using namespace std;
 using namespace chrono;
 
-template<typename T>
-class ResizableArray {
-public:
-    ResizableArray() : data(nullptr), cap(0), len(0) {}
 
-    // Copy constructor
-    ResizableArray(const ResizableArray& other) : data(nullptr), cap(other.cap), len(other.len) {
-        if (cap > 0) {
-            data = new T[cap];
-            for (size_t i = 0; i < len; ++i) {
-                data[i] = other.data[i];
-            }
-        }
-    }
-
-    // Move constructor
-    ResizableArray(ResizableArray&& other) noexcept : data(other.data), cap(other.cap), len(other.len) {
-        other.data = nullptr;
-        other.cap = 0;
-        other.len = 0;
-    }
-
-    // Copy assignment operator
-    ResizableArray& operator=(const ResizableArray& other) {
-        if (this != &other) {
-            delete[] data;
-            cap = other.cap;
-            len = other.len;
-            data = (cap > 0) ? new T[cap] : nullptr;
-            for (size_t i = 0; i < len; ++i) {
-                data[i] = other.data[i];
-            }
-        }
-        return *this;
-    }
-
-    // Move assignment operator
-    ResizableArray& operator=(ResizableArray&& other) noexcept {
-        if (this != &other) {
-            delete[] data;
-            data = other.data;
-            cap = other.cap;
-            len = other.len;
-            other.data = nullptr;
-            other.cap = 0;
-            other.len = 0;
-        }
-        return *this;
-    }
-
-    // Destructor
-    ~ResizableArray() { delete[] data; }
-
-    void push_back(const T& val) {
-        if (len == cap) resize();
-        data[len++] = val;
-    }
-
-    T& operator[](size_t idx) { assert(idx < len); return data[idx]; }
-    const T& operator[](size_t idx) const { assert(idx < len); return data[idx]; }
-    size_t size() const { return len; }
-
-private:
-    void resize() {
-        cap = (cap == 0 ? 10 : cap * 2);
-        T* newdata = new T[cap];
-        for (size_t i = 0; i < len; ++i) newdata[i] = data[i];
-        delete[] data;
-        data = newdata;
-    }
-
-    T* data;
-    size_t cap;
-    size_t len;
-};
 
 string clean_token(const string& token) {
     string temp;
@@ -97,6 +24,16 @@ string clean_token(const string& token) {
     return temp;
 }
 
+// size_t count_sentences(const ResizableArray<string>& tokens) {
+//     size_t sentences = 0;
+//     for (size_t i = 0; i < tokens.size(); ++i) {
+//         const string& tok = tokens[i];
+//         for (char c : tok) {
+//             if (c == '.' || c == '!' || c == '?') sentences++;
+//         }
+//     }
+//     return sentences;
+// }
 
 // Simple selection sort descending by count
 void sort_freq_desc(ResizableArray<pair<string,int>>& arr) {
@@ -137,6 +74,7 @@ size_t simple_mod_hash(const string& s, size_t hsize) {
     for (char c : s) sum += static_cast<unsigned char>(c);
     return sum % hsize;
 }
+
 
 
 void run_experiments(const ResizableArray<string>& tokens) {
@@ -234,6 +172,7 @@ void run_experiments(const ResizableArray<string>& tokens) {
     cout << "Collision resolution uses linear probing: if a collision occurs, probe the next slot using (i + 1) % hsize.\n";
     cout << "This method is based on open addressing, as discussed in class.\n";
 }
+
 void menu() {
     cout << "=== Menu === \n"
          << "1. Display 80 most frequent words" << endl
