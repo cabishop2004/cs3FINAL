@@ -1,5 +1,4 @@
 #include "ChainingHash.h"
-#include "FinalAssignment.h"
 #include "ProbingHash.h"
 #include <iostream>
 #include <fstream>
@@ -12,7 +11,81 @@
 using namespace std;
 using namespace chrono;
 
+template<typename T>
+class ResizableArray {
+public:
+    ResizableArray() : data(nullptr), cap(0), len(0) {}
 
+    // Copy constructor
+    ResizableArray(const ResizableArray& other) : data(nullptr), cap(other.cap), len(other.len) {
+        if (cap > 0) {
+            data = new T[cap];
+            for (size_t i = 0; i < len; ++i) {
+                data[i] = other.data[i];
+            }
+        }
+    }
+
+    // Move constructor
+    ResizableArray(ResizableArray&& other) noexcept : data(other.data), cap(other.cap), len(other.len) {
+        other.data = nullptr;
+        other.cap = 0;
+        other.len = 0;
+    }
+
+    // Copy assignment operator
+    ResizableArray& operator=(const ResizableArray& other) {
+        if (this != &other) {
+            delete[] data;
+            cap = other.cap;
+            len = other.len;
+            data = (cap > 0) ? new T[cap] : nullptr;
+            for (size_t i = 0; i < len; ++i) {
+                data[i] = other.data[i];
+            }
+        }
+        return *this;
+    }
+
+    // Move assignment operator
+    ResizableArray& operator=(ResizableArray&& other) noexcept {
+        if (this != &other) {
+            delete[] data;
+            data = other.data;
+            cap = other.cap;
+            len = other.len;
+            other.data = nullptr;
+            other.cap = 0;
+            other.len = 0;
+        }
+        return *this;
+    }
+
+    // Destructor
+    ~ResizableArray() { delete[] data; }
+
+    void push_back(const T& val) {
+        if (len == cap) resize();
+        data[len++] = val;
+    }
+
+    T& operator[](size_t idx) { assert(idx < len); return data[idx]; }
+    const T& operator[](size_t idx) const { assert(idx < len); return data[idx]; }
+    size_t size() const { return len; }
+
+private:
+    void resize() {
+        cap = (cap == 0 ? 10 : cap * 2);
+        T* newdata = new T[cap];
+        for (size_t i = 0; i < len; ++i) newdata[i] = data[i];
+        delete[] data;
+        data = newdata;
+    }
+
+    T* data;
+    size_t cap;
+    size_t len;
+};
 
 string clean_token(const string& token) {
     string temp;
@@ -24,16 +97,6 @@ string clean_token(const string& token) {
     return temp;
 }
 
-// size_t count_sentences(const ResizableArray<string>& tokens) {
-//     size_t sentences = 0;
-//     for (size_t i = 0; i < tokens.size(); ++i) {
-//         const string& tok = tokens[i];
-//         for (char c : tok) {
-//             if (c == '.' || c == '!' || c == '?') sentences++;
-//         }
-//     }
-//     return sentences;
-// }
 
 // Simple selection sort descending by count
 void sort_freq_desc(ResizableArray<pair<string,int>>& arr) {
@@ -74,7 +137,6 @@ size_t simple_mod_hash(const string& s, size_t hsize) {
     for (char c : s) sum += static_cast<unsigned char>(c);
     return sum % hsize;
 }
-
 
 
 void run_experiments(const ResizableArray<string>& tokens) {
@@ -172,7 +234,6 @@ void run_experiments(const ResizableArray<string>& tokens) {
     cout << "Collision resolution uses linear probing: if a collision occurs, probe the next slot using (i + 1) % hsize.\n";
     cout << "This method is based on open addressing, as discussed in class.\n";
 }
-
 void menu() {
     cout << "=== Menu === \n"
          << "1. Display 80 most frequent words" << endl
@@ -210,7 +271,7 @@ int main(int argc, char* argv[]) {
     freq_list = ResizableArray<pair<string,int>>();
     string word;
     size_t sentence_count = 0;
-    auto start = high_resolution_clock::now();
+    //auto start = high_resolution_clock::now();
     while (infile >> word) {
         for (char c : word) {
             if (c == '.' || c == '!' || c == '?') sentence_count++;
@@ -224,17 +285,20 @@ int main(int argc, char* argv[]) {
         probe_table.find(w, v) ? probe_table.insert(w, v + 1) : probe_table.insert(w, 1);
     }
 
-    auto end = high_resolution_clock::now();
-    outfile << "Load/Process Time: "
-            << duration_cast<nanoseconds>(end-start).count()
-            << " ns";
+    // auto end = high_resolution_clock::now();
+    // outfile << "Load/Process Time: "
+    //         << duration_cast<nanoseconds>(end-start).count()
+    //         << " ns";
 
     do {
         menu(); 
         cin >> choice;
         switch (choice) {
             case 1: {
+                ofstream outfile(argv[2], ios::trunc);  // Overwrite file
+                auto start = high_resolution_clock::now();
                 // build freq_list from tokens
+                freq_list = ResizableArray<pair<string,int>>();
                 for (size_t i = 0; i < tokens.size(); ++i) {
                     bool found = false;
                     for (size_t j = 0; j < freq_list.size(); ++j) {
@@ -251,19 +315,31 @@ int main(int argc, char* argv[]) {
                 for (size_t i = 0; i < 80 && i < freq_list.size(); ++i)
                     outfile << freq_list[i].first << ": " << freq_list[i].second << endl;
                 cout << "Top 80 words written to output file.\n";
+
+                auto end = high_resolution_clock::now();
+                long long runtime_ns = duration_cast<nanoseconds>(end - start).count();
+                outfile << "Runtime: " << runtime_ns << " ns\n";
                 break;
             }
             case 2: {
-                // lowest frequencies
+                ofstream outfile(argv[2], ios::trunc);  // Overwrite file
+                auto start = high_resolution_clock::now();
+
                 ResizableArray<pair<string,int>> temp = freq_list;
                 sort_freq_asc(temp);
                 outfile << "Bottom 80 Words:" << endl;
                 for (size_t i = 0; i < 80 && i < temp.size(); ++i)
                     outfile << temp[i].first << ": " << temp[i].second << endl;
                 cout << "Bottom 80 words written to output file.\n";
+
+                auto end = high_resolution_clock::now();
+                outfile << "Runtime: " << duration_cast<nanoseconds>(end - start).count() << " ns\n";
                 break;
             }
             case 3: {
+                ofstream outfile(argv[2], ios::trunc);
+                auto start = high_resolution_clock::now();
+        
                 infile.clear(); infile.seekg(0);
                 ResizableArray<string> work9;
                 size_t count = 0;
@@ -273,7 +349,7 @@ int main(int argc, char* argv[]) {
                 }
                 cout << "Enter up to 8 keys separated by '@@@': ";
                 string line;
-                getline(cin, line);
+                getline(cin, line); // flush newline
                 getline(cin, line);
                 ResizableArray<string> keys;
                 size_t pos = 0;
@@ -290,14 +366,25 @@ int main(int argc, char* argv[]) {
                     outfile << endl;
                 }
                 cout << "Key search results written to output file.\n";
+        
+                auto end = high_resolution_clock::now();
+                outfile << "Runtime: " << duration_cast<nanoseconds>(end - start).count() << " ns\n";
                 break;
             }
             case 4: {
+                ofstream outfile(argv[2], ios::trunc);
+                auto start = high_resolution_clock::now();
+        
                 outfile << "Sentence count: " << sentence_count << endl;
                 cout << "Sentence count written to output file.\n";
+        
+                auto end = high_resolution_clock::now();
+                outfile << "Runtime: " << duration_cast<nanoseconds>(end - start).count() << " ns\n";
                 break;
             }
+        
             case 5: { // Run experiments
+                ofstream outfile(argv[2], ios::trunc);
                 outfile << "\n=== Running Experiments ===\n";
                 streambuf* cout_buf = cout.rdbuf(); // Save original cout buffer
                 cout.rdbuf(outfile.rdbuf());       // Redirect cout to outfile
