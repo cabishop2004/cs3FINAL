@@ -13,6 +13,17 @@ using namespace std;
 using namespace chrono;
 
 
+// Function to detect section headers like "I.", "II.", etc. 
+bool is_section_header(const string& word) {
+    if (word.empty() || word.back() != '.') return false;
+    string roman = word.substr(0, word.size() - 1);
+    for (char c : roman) {
+        if (c != 'I' && c != 'V' && c != 'X') return false;
+    }
+    return true;
+}
+
+
 string clean_token(const string& token) {
     string temp;
     for (size_t i = 0; i < token.size(); ++i) {
@@ -160,14 +171,13 @@ void run_experiments(const ResizableArray<string>& tokens) {
     cout << "Collision resolution uses linear probing: if a collision occurs, probe the next slot using (i + 1) % hsize.\n";
     cout << "This method is based on open addressing, as discussed in class.\n";
 }
-
 void menu() {
     cout << "=== Menu === \n"
          << "1. Display 80 most frequent words" << endl
          << "2. Display 80 least frequent words" << endl
          << "3. Search up to 8 keys in 'Engineer’s Thumb'" << endl
          << "4. Count sentences" << endl
-         << "5. Run experiments" << endl
+         << "5. Run experiments" << endl // New menu option
          << "0. Exit" << endl
          << "Choice: ";
 }
@@ -190,11 +200,19 @@ int main(int argc, char* argv[]) {
     ProbingHash<string,int> probe_table(TABLE_SIZE, MAX_LOAD);
 
     ResizableArray<string> tokens;
+    ResizableArray<pair<string,int>> freq_list;
+
+    int choice;
+    infile.clear(); infile.seekg(0);
+    tokens = ResizableArray<string>();
+    freq_list = ResizableArray<pair<string,int>>();
     string word;
     size_t sentence_count = 0;
-
-    // Read and populate tokens and hash tables
+    //auto start = high_resolution_clock::now();
+    int section = 0;
     while (infile >> word) {
+        if (is_section_header(word)) section++;
+
         for (char c : word) {
             if (c == '.' || c == '!' || c == '?') sentence_count++;
         }
@@ -203,71 +221,69 @@ int main(int argc, char* argv[]) {
         if (w.empty()) continue;
         tokens.push_back(w);
         int v;
-        chain_table.find(w, v) ? chain_table.insert(w, v + 1) : chain_table.insert(w, 1);
-        probe_table.find(w, v) ? probe_table.insert(w, v + 1) : probe_table.insert(w, 1);
-    }
-
-    // Build freq_list once after reading input
-    ResizableArray<pair<string,int>> freq_list;
-    for (size_t i = 0; i < tokens.size(); ++i) {
-        int count;
-        if (chain_table.find(tokens[i], count)) {
-            bool exists = false;
-            for (size_t j = 0; j < freq_list.size(); ++j) {
-                if (freq_list[j].first == tokens[i]) {
-                    exists = true;
-                    break;
-                }
-            }
-            if (!exists) freq_list.push_back(make_pair(tokens[i], count));
+        if (section >= 1 && section <= 6) {
+            chain_table.find(w, v) ? chain_table.insert(w, v + 1) : chain_table.insert(w, 1);
+        } else if (section >= 7 && section <= 12) {
+            probe_table.find(w, v) ? probe_table.insert(w, v + 1) : probe_table.insert(w, 1);
         }
     }
 
-    int choice;
+
+
     do {
         menu(); 
         cin >> choice;
         switch (choice) {
             case 1: {
-                ofstream out(argv[2], ios::trunc);
+                ofstream outfile(argv[2], ios::trunc);  // Overwrite file
                 auto start = high_resolution_clock::now();
-
-                // Write top 80 frequent words
+                // build freq_list from tokens
+                freq_list = ResizableArray<pair<string,int>>();
+                for (size_t i = 0; i < tokens.size(); ++i) {
+                    bool found = false;
+                    for (size_t j = 0; j < freq_list.size(); ++j) {
+                        if (freq_list[j].first == tokens[i]) {
+                            freq_list[j].second++;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) freq_list.push_back(make_pair(tokens[i], 1));
+                }
                 sort_freq_desc(freq_list);
-                out << "Top 80 Words:" << endl;
+                outfile << "Top 80 Words:" << endl;
                 for (size_t i = 0; i < 80 && i < freq_list.size(); ++i)
-                    out << freq_list[i].first << ": " << freq_list[i].second << endl;
+                    outfile << freq_list[i].first << ": " << freq_list[i].second << endl;
+                cout << "Top 80 words written to output file.\n";
 
                 auto end = high_resolution_clock::now();
                 long long runtime_ns = duration_cast<nanoseconds>(end - start).count();
-                out << "Runtime: " << runtime_ns << " ns\n";
-                out.close();
-                cout << "Top 80 words written to output file.\n";
+                outfile << "Runtime: " << runtime_ns << " ns\n";
                 break;
             }
             case 2: {
-                ofstream out(argv[2], ios::trunc);
+                ofstream outfile(argv[2], ios::trunc);  // Overwrite file
                 auto start = high_resolution_clock::now();
 
                 ResizableArray<pair<string,int>> temp = freq_list;
                 sort_freq_asc(temp);
-                out << "Bottom 80 Words:" << endl;
+                outfile << "Bottom 80 Words:" << endl;
                 for (size_t i = 0; i < 80 && i < temp.size(); ++i)
-                    out << temp[i].first << ": " << temp[i].second << endl;
+                    outfile << temp[i].first << ": " << temp[i].second << endl;
+                cout << "Bottom 80 words written to output file.\n";
 
                 auto end = high_resolution_clock::now();
-                out << "Runtime: " << duration_cast<nanoseconds>(end - start).count() << " ns\n";
-                out.close();
-                cout << "Bottom 80 words written to output file.\n";
+                outfile << "Runtime: " << duration_cast<nanoseconds>(end - start).count() << " ns\n";
                 break;
             }
             case 3: {
-                ofstream out(argv[2], ios::trunc);
+                ofstream outfile(argv[2], ios::trunc);
                 auto start = high_resolution_clock::now();
         
                 infile.clear(); infile.seekg(0);
                 ResizableArray<string> work9;
                 size_t count = 0;
+                string word;
                 while (infile >> word) {
                     if (++count > 5000) work9.push_back(clean_token(word));
                 }
@@ -282,39 +298,39 @@ int main(int argc, char* argv[]) {
                     line.erase(0, pos + 3);
                 }
                 keys.push_back(clean_token(line));
-                out << "Key Search Results:" << endl;
+                outfile << "Key Search Results:" << endl;
                 for (size_t i = 0; i < keys.size(); ++i) {
                     auto positions = rabin_karp(work9, keys[i]);
-                    out << "Key '" << keys[i] << "' at positions: ";
-                    for (size_t p = 0; p < positions.size(); ++p) out << positions[p] << " ";
-                    out << endl;
+                    outfile << "Key '" << keys[i] << "' at positions: ";
+                    for (size_t p = 0; p < positions.size(); ++p) outfile << positions[p] << " ";
+                    outfile << endl;
                 }
-                auto end = high_resolution_clock::now();
-                out << "Runtime: " << duration_cast<nanoseconds>(end - start).count() << " ns\n";
-                out.close();
                 cout << "Key search results written to output file.\n";
+        
+                auto end = high_resolution_clock::now();
+                outfile << "Runtime: " << duration_cast<nanoseconds>(end - start).count() << " ns\n";
                 break;
             }
             case 4: {
-                ofstream out(argv[2], ios::trunc);
+                ofstream outfile(argv[2], ios::trunc);
                 auto start = high_resolution_clock::now();
         
-                out << "Sentence count: " << sentence_count << endl;
-                auto end = high_resolution_clock::now();
-                out << "Runtime: " << duration_cast<nanoseconds>(end - start).count() << " ns\n";
-                out.close();
+                outfile << "Sentence count: " << sentence_count << endl;
                 cout << "Sentence count written to output file.\n";
+        
+                auto end = high_resolution_clock::now();
+                outfile << "Runtime: " << duration_cast<nanoseconds>(end - start).count() << " ns\n";
                 break;
             }
-
+        
             case 5: { // Run experiments
-                ofstream out(argv[2], ios::trunc);
-                out << "\n=== Running Experiments ===\n";
+                ofstream outfile(argv[2], ios::trunc);
+                outfile << "\n=== Running Experiments ===\n";
                 streambuf* cout_buf = cout.rdbuf(); // Save original cout buffer
-                cout.rdbuf(out.rdbuf());       // Redirect cout to output file
-                run_experiments(tokens);       // Run experiments
-                cout.rdbuf(cout_buf);          // Restore original cout buffer
-                out.close();                   // Close file
+                cout.rdbuf(outfile.rdbuf());       // Redirect cout to outfile
+                run_experiments(tokens);           // Ensure experiments are executed immediately
+                cout.rdbuf(cout_buf);              // Restore original cout buffer
+                outfile.flush();                   // Flush output to ensure it is written immediately
                 cout << "Experiments completed. Results written to output file.\n";
                 break;
             }
@@ -327,5 +343,5 @@ int main(int argc, char* argv[]) {
         }
     } while (choice != 0);
 
-    return 0;
+    return 0; // Ensure a clean exit
 }
