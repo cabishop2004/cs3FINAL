@@ -208,8 +208,8 @@ int main(int argc, char* argv[]) {
     freq_list = ResizableArray<pair<string,int>>();
     string word;
     size_t sentence_count = 0;
-
     int section = 0;
+    auto start = high_resolution_clock::now();
     while (infile >> word) {
         if (is_section_header(word)) section++;
 
@@ -227,6 +227,9 @@ int main(int argc, char* argv[]) {
             probe_table.find(w, v) ? probe_table.insert(w, v + 1) : probe_table.insert(w, 1);
         }
     }
+    auto end = high_resolution_clock::now();
+    long long sentence_runtime_ns = duration_cast<nanoseconds>(end - start).count();
+
 
 
 
@@ -313,13 +316,12 @@ int main(int argc, char* argv[]) {
             }
             case 4: {
                 ofstream outfile(argv[2], ios::trunc);
-                auto start = high_resolution_clock::now();
+                
         
                 outfile << "Sentence count: " << sentence_count << endl;
                 cout << "Sentence count written to output file.\n";
         
-                auto end = high_resolution_clock::now();
-                outfile << "Runtime: " << duration_cast<nanoseconds>(end - start).count() << " ns\n";
+                outfile << "Runtime: " << sentence_runtime_ns << " ns\n";
                 break;
             }
         
