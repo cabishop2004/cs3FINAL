@@ -208,7 +208,7 @@ int main(int argc, char* argv[]) {
     freq_list = ResizableArray<pair<string,int>>();
     string word;
     size_t sentence_count = 0;
-    //auto start = high_resolution_clock::now();
+
     int section = 0;
     while (infile >> word) {
         if (is_section_header(word)) section++;
